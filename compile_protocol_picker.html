@@ -1,6 +1,11 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>Compile Picker</title>
+<meta name="author" content="りゅー (@suke69)">
+<meta name="description" content="Compile Picker  by りゅー (@suke69)">
+<meta property="og:title" content="Compile Picker">
+<meta property="og:description" content=" by りゅー (@suke69)">
+<meta property="og:url" content="https://x.com/suke69">
 <style>
   body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP","Yu Gothic",Meiryo,Arial,sans-serif;background:#0d1117;color:#e6edf3;margin:24px}
   h1{font-size:20px;margin:0 0 10px}
@@ -8,31 +13,31 @@
   .card{background:#111827;border:1px solid #263244;border-radius:12px;padding:12px}
   .row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
   textarea{width:100%;min-height:120px;background:#0b1220;color:#e6edf3;border:1px solid #263244;border-radius:10px;padding:8px}
-  input[type="number"]{background:#0b1220;color:#e6edf3;border:1px solid #263244;border-radius:8px;padding:6px 8px;width:88px}
+  input[type="number"],select{background:#0b1220;color:#e6edf3;border:1px solid #263244;border-radius:8px;padding:6px 8px}
   button{background:#1f2937;border:1px solid #2d3a4a;color:#e6edf3;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:700}
   button:hover{background:#263244}
   .result{white-space:pre-wrap;background:#0b1220;border:1px dashed #2d3a4a;border-radius:10px;padding:10px;min-height:90px;margin-top:8px}
   .small{color:#9aa6b2;font-size:12px}
   .pill{display:inline-block;padding:4px 8px;border:1px solid #2d3a4a;border-radius:999px;margin:4px 6px 0 0}
+  .col{flex:1;min-width:240px}
   @media(max-width:1000px){.grid{grid-template-columns:1fr}}
+  a.x{color:#58a6ff;text-decoration:none}
+  footer{margin-top:30px;text-align:center;color:#9aa6b2;font-size:12px}
 </style>
 
 <h1>
   Compile Picker
   <span style="font-size:14px;color:#9aa6b2;font-weight:400;">
-    by <a href="https://x.com/suke69" target="_blank" style="color:#58a6ff;text-decoration:none;">
-      りゅー (@suke69)
-    </a>
+    by <a class="x" href="https://x.com/suke69" target="_blank">りゅー (@suke69)</a>
   </span>
 </h1>
-
 
 <div class="grid">
   <!-- プール -->
   <div class="card">
     <div class="row">
       <label class="small"><input type="checkbox" id="auxToggle"> Aux1（HATE/LOVE/APATHY）を除外</label>
-      <span class="small">行ごとに1プロトコル。編集可。初期は Main+Aux1 を含みます。</span>
+      <span class="small">行ごとに1プロトコル。初期は Main+Aux1 を含みます。</span>
     </div>
     <textarea id="pool">DEATH
 FIRE
@@ -62,13 +67,40 @@ WATER</textarea>
       <button id="draftRatio">レシオ制ドラフト（P1 vs P2）</button>
       <button id="draftRandom">完全ランダムドラフト（P1 vs P2）</button>
     </div>
+
+    <!-- 共通の枚数 + P1/P2個別条件 -->
+    <div class="row">
+      <label class="small">枚数
+        <input type="number" id="cnt" value="3" min="2" max="6" style="width:90px">
+      </label>
+    </div>
+    <div class="row">
+      <div class="col small">
+        <strong>P1 条件</strong><br>
+        合計Min <input type="number" id="minP1" value="7" style="width:80px">
+        合計Max <input type="number" id="maxP1" value="8" style="width:80px">
+      </div>
+      <div class="col small">
+        <strong>P2 条件</strong><br>
+        合計Min <input type="number" id="minP2" value="7" style="width:80px">
+        合計Max <input type="number" id="maxP2" value="8" style="width:80px">
+      </div>
+    </div>
+
+    <!-- レシオ制の単体構築（どちらの条件を使うか選択） -->
     <div class="row">
       <button id="pickRatioBuild">レシオ制デッキ構築</button>
-      <label class="small">枚数 <input type="number" id="cnt" value="3" min="2" max="6"></label>
-      <label class="small">合計Min <input type="number" id="minSum" value="7"></label>
-      <label class="small">合計Max <input type="number" id="maxSum" value="8"></label>
+      <label class="small">対象
+        <select id="buildTarget">
+          <option value="P1">P1条件を使用</option>
+          <option value="P2">P2条件を使用</option>
+        </select>
+      </label>
     </div>
+
     <div id="out" class="result"></div>
+
+    <!-- レシオ編集 -->
     <div class="row">
       <div style="flex:1">
         <div class="small">レシオ（初期値＝あなたの設定／0許可）</div>
@@ -98,18 +130,27 @@ METAL=0</textarea>
 /* ---------- 定数/状態 ---------- */
 const dMain = ["DEATH","FIRE","GRAVITY","LIFE","LIGHT","METAL","PLAGUE","PSYCHIC","SPEED","SPIRIT","DARKNESS","WATER"];
 const auxSet = ["HATE","LOVE","APATHY"];
-const LS = { pool:"compile.pool", ratio:"compile.ratio", params:"compile.params", aux:"compile.auxExcluded" };
+const LS = {
+  pool:"compile.pool",
+  ratio:"compile.ratio",
+  aux:"compile.auxExcluded",
+  params:"compile.params2" // P1/P2個別条件 + N
+};
 
-/* ---------- 要素取得 ---------- */
+/* ---------- 要素 ---------- */
 const poolTA = document.getElementById('pool');
 const chips = document.getElementById('chips');
 const auxToggle = document.getElementById('auxToggle');
 const out = document.getElementById('out');
 const ratioTA = document.getElementById('ratioTA');
 const ratioView = document.getElementById('ratioView');
+
 const cntIn = document.getElementById('cnt');
-const minIn = document.getElementById('minSum');
-const maxIn = document.getElementById('maxSum');
+const minP1 = document.getElementById('minP1');
+const maxP1 = document.getElementById('maxP1');
+const minP2 = document.getElementById('minP2');
+const maxP2 = document.getElementById('maxP2');
+const buildTarget = document.getElementById('buildTarget');
 
 /* ---------- ユーティリティ ---------- */
 function uniq(lines){
@@ -122,6 +163,7 @@ function setPool(list){ poolTA.value = list.join("\n"); renderChips(); }
 function renderChips(){ const pool=getPool(); chips.innerHTML = pool.map(p=>`<span class="pill">${p}</span>`).join(""); }
 function shuffle(a){ const arr=a.slice(); for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
 function sample(a,n){ return shuffle(a).slice(0, Math.min(n,a.length)); }
+
 function parseRatio(text){
   const map = Object.create(null);
   for(const line of (text||"").split(/\r?\n/)){
@@ -145,19 +187,34 @@ function showRatioPreview(){
 function saveAll(){
   localStorage.setItem(LS.pool, poolTA.value);
   localStorage.setItem(LS.ratio, ratioTA.value);
-  localStorage.setItem(LS.params, JSON.stringify({cnt:+cntIn.value, min:+minIn.value, max:+maxIn.value}));
   localStorage.setItem(LS.aux, auxToggle.checked ? "1" : "0");
+  localStorage.setItem(LS.params, JSON.stringify({
+    N:+cntIn.value,
+    p1:{min:+minP1.value, max:+maxP1.value},
+    p2:{min:+minP2.value, max:+maxP2.value},
+    target: buildTarget.value
+  }));
 }
 function loadAll(){
   auxToggle.checked = (localStorage.getItem(LS.aux) ?? "0") === "1";
 
   const poolSaved = localStorage.getItem(LS.pool);
   if(poolSaved){ poolTA.value = poolSaved; }
-  else{ setPool(dMain.concat(auxSet)); } // 初期はMain+Aux1を含む
+  else{ setPool(dMain.concat(auxSet)); } // 初期はMain+Aux1含む
 
   const rSaved = localStorage.getItem(LS.ratio); if(rSaved) ratioTA.value = rSaved;
-  const params = localStorage.getItem(LS.params);
-  if(params){ try{ const p=JSON.parse(params)||{}; cntIn.value=p.cnt??3; minIn.value=p.min??7; maxIn.value=p.max??8; }catch(e){} }
+
+  const paramsSaved = localStorage.getItem(LS.params);
+  if(paramsSaved){
+    try{
+      const p = JSON.parse(paramsSaved)||{};
+      cntIn.value = p.N ?? 3;
+      (p.p1||={}); (p.p2||={});
+      minP1.value = p.p1.min ?? 7; maxP1.value = p.p1.max ?? 8;
+      minP2.value = p.p2.min ?? 7; maxP2.value = p.p2.max ?? 8;
+      buildTarget.value = p.target ?? "P1";
+    }catch(e){}
+  }
 
   // Aux適用
   if(auxToggle.checked){
@@ -188,66 +245,68 @@ auxToggle.addEventListener('change', ()=>{
   saveAll(); showRatioPreview();
 });
 poolTA.addEventListener('input', ()=>{ renderChips(); saveAll(); showRatioPreview(); });
-[cntIn, minIn, maxIn].forEach(el=>el.addEventListener('input', saveAll));
+[cntIn, minP1, maxP1, minP2, maxP2, buildTarget].forEach(el=>el.addEventListener('input', saveAll));
 
-/* ---------- レシオ制：1人分構築 ---------- */
-document.getElementById('pickRatioBuild').onclick = ()=>{
-  const pool = getPool(), N=+cntIn.value, minS=+minIn.value, maxS=+maxIn.value;
-  if(pool.length<N){ out.textContent="プールが少なすぎます（"+N+"以上必要）。"; return; }
-  const cost = k => ratioOf(k);
-  const combos=[];
+/* ---------- 組合せ列挙（N枚・合計範囲） ---------- */
+function combosBySum(pool, N, cost, minS, maxS){
+  const res=[];
   function rec(start, acc, sum){
-    if(acc.length===N){ if(sum>=minS && sum<=maxS) combos.push({arr:acc.slice(), s:sum}); return; }
+    if(acc.length===N){ if(sum>=minS && sum<=maxS) res.push({arr:acc.slice(), set:new Set(acc), s:sum}); return; }
     for(let i=start;i<pool.length;i++){
-      const k=pool[i]; acc.push(k); rec(i+1, acc, sum+cost(k)); acc.pop();
+      const k=pool[i]; const next=sum+cost(k);
+      // 早期枝刈りはしない（値域が狭いのでOK）
+      acc.push(k); rec(i+1, acc, next); acc.pop();
     }
   }
   rec(0, [], 0);
-  if(!combos.length){ out.textContent="条件（合計"+minS+"〜"+maxS+" / "+N+"枚）に合う組み合わせが見つかりません。レシオやプールを見直してください。"; return; }
+  return res;
+}
+
+/* ---------- レシオ制：単体構築 ---------- */
+document.getElementById('pickRatioBuild').onclick = ()=>{
+  const pool = getPool(), N=+cntIn.value;
+  if(pool.length<N){ out.textContent="プールが少なすぎます（"+N+"以上必要）。"; return; }
+  const useP = buildTarget.value==="P2" ? {min:+minP2.value, max:+maxP2.value, label:"P2"} : {min:+minP1.value, max:+maxP1.value, label:"P1"};
+  const cost = k => ratioOf(k);
+
+  const combos = combosBySum(pool, N, cost, useP.min, useP.max);
+  if(!combos.length){ out.textContent=`条件（${useP.label}: 合計${useP.min}〜${useP.max} / ${N}枚）に合う組み合わせが見つかりません。レシオやプールを見直してください。`; return; }
   const pick = combos[Math.floor(Math.random()*combos.length)];
   const listed = pick.arr.map(k => `${k}(${cost(k)})`).join("\n- ");
-  out.textContent = `🧮 レシオ制デッキ構築（${minS}〜${maxS} / ${N}枚）\n- ${listed}\n合計: ${pick.s}`;
+  out.textContent = `🧮 レシオ制デッキ構築（${useP.label}条件 / ${useP.min}〜${useP.max} / ${N}枚）\n- ${listed}\n合計: ${pick.s}`;
 };
 
-/* ---------- レシオ制：ドラフト（P1/P2とも条件内） ---------- */
+/* ---------- レシオ制：ドラフト（P1/P2別条件） ---------- */
 document.getElementById('draftRatio').onclick = ()=>{
-  const pool = getPool(), N=+cntIn.value, minS=+minIn.value, maxS=+maxIn.value;
+  const pool = getPool(), N=+cntIn.value;
   if(pool.length < 2*N){ out.textContent="プールが少なすぎます（"+(2*N)+"以上必要）。"; return; }
   const cost = k => ratioOf(k);
+  const c1 = combosBySum(pool, N, cost, +minP1.value, +maxP1.value);
+  const c2 = combosBySum(pool, N, cost, +minP2.value, +maxP2.value);
+  if(!c1.length){ out.textContent="P1条件を満たす組が見つかりません。"; return; }
+  if(!c2.length){ out.textContent="P2条件を満たす組が見つかりません。"; return; }
 
-  // N枚で条件を満たす集合を列挙
-  const combos=[];
-  function rec(start, acc, sum){
-    if(acc.length===N){ if(sum>=minS && sum<=maxS) combos.push({set:new Set(acc), arr:acc.slice(), s:sum}); return; }
-    for(let i=start;i<pool.length;i++){
-      const k=pool[i]; acc.push(k); rec(i+1, acc, sum+cost(k)); acc.pop();
-    }
-  }
-  rec(0, [], 0);
-  if(!combos.length){ out.textContent="条件を満たす"+N+"枚セットが見つかりません。"; return; }
-
-  // 重複しない2セットをランダム探索
-  const order = shuffle(combos);
+  // 重複しない2組を探索（ランダム順）
+  const a = shuffle(c1), b = shuffle(c2);
   let best=null;
-  outer: for(const c1 of order){
-    for(const c2 of order){
-      if(c1===c2) continue;
-      let ok=true;
-      for(const k of c1.set){ if(c2.set.has(k)){ ok=false; break; } }
-      if(ok){ best=[c1,c2]; break outer; }
+  outer: for(const x of a){
+    for(const y of b){
+      let ok=true; for(const k of x.set){ if(y.set.has(k)){ ok=false; break; } }
+      if(ok){ best=[x,y]; break outer; }
     }
   }
   if(!best){ out.textContent="互いに重複しない2セットが作れません。プールや条件を見直してください。"; return; }
 
-  // 先行をランダム決定（表示用）
   const first = Math.random()<0.5 ? "P1" : "P2";
   const P1 = best[0].arr.slice(), P2 = best[1].arr.slice();
   const fmt = a => a.map((k,i)=>`${i+1}. ${k}(${cost(k)})`).join("\n");
-  const remain = pool.filter(x=>!P1.includes(x)&&!P2.includes(x));
+  const remain = pool.filter(x=>!P1.includes(x) && !P2.includes(x));
 
   out.textContent =
-`🌀 レシオ制ドラフト（各${N}枚 / 合計${minS}〜${maxS}）
-先攻: ${first}
+`🌀 レシオ制ドラフト（各${N}枚）
+先行: ${first}
+P1条件: 合計${minP1.value}〜${maxP1.value} / P2条件: 合計${minP2.value}〜${maxP2.value}
+ドラフト順: P1→P2×2→P1×2→P2
 
 P1 合計=${best[0].s}
 ${fmt(P1)}
@@ -284,7 +343,8 @@ document.getElementById('draftRandom').onclick = ()=>{
   const fmt = a => a.map((k,i)=>`${i+1}. ${k}`).join("\n");
   out.textContent =
 `🎲 完全ランダムドラフト（各${N}枚／コスト無視）
-先攻: ${first}
+先行: ${first}
+ドラフト順: P1→P2×2→P1×2→P2
 
 P1
 ${fmt(picks.P1)}
@@ -298,10 +358,16 @@ ${fmt(picks.P2)}
 
 /* ---------- 初期化 ---------- */
 if(!localStorage.getItem(LS.ratio)) localStorage.setItem(LS.ratio, document.getElementById('ratioTA').value);
-if(!localStorage.getItem(LS.params)) localStorage.setItem(LS.params, JSON.stringify({cnt:3,min:7,max:8}));
 if(localStorage.getItem(LS.aux)===null) localStorage.setItem(LS.aux,"0");
 if(!localStorage.getItem(LS.pool)){
   localStorage.setItem(LS.pool, dMain.concat(auxSet).join("\n"));
 }
+if(!localStorage.getItem(LS.params)){
+  localStorage.setItem(LS.params, JSON.stringify({N:3,p1:{min:7,max:8},p2:{min:7,max:8},target:"P1"}));
+}
 loadAll();
 </script>
+
+<footer>
+  © 2025 りゅー (@suke69) — <a class="x" href="https://x.com/suke69" target="_blank">https://x.com/suke69</a>
+</footer>
