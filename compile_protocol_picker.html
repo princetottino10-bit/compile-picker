@@ -38,23 +38,25 @@
 
 <div class="grid">
   <!-- ① 上段：ランダム優先 + Aux1除外 + P1/P2設定 -->
+        <label class="small" style="display:flex;align-items:center;gap:6px;margin-left:auto;">
+        <input type="checkbox" id="auxToggle"> Aux1（HATE/LOVE/APATHY）を除外
+      </label>
   <div class="card" style="grid-column:1 / -1">
     <div class="row">
       <button id="draftRandom">ランダムP1vsP2</button>
       <button id="pick3">ランダム3枚</button>
-      <label class="small" style="display:flex;align-items:center;gap:6px;margin-left:auto;">
-        <input type="checkbox" id="auxToggle"> Aux1（HATE/LOVE/APATHY）を除外
-      </label>
     </div>
 
-    <div class="row">
-      <button id="draftRatio">レシオP1vsP2</button>
-      <button id="pickRatioBuild">レシオ3枚</button>
-      <label class="small" style="display:flex;align-items:center;gap:6px;margin-left:auto;">
-              </label>
-      <label class="small">枚数
-        <input type="number" id="cnt" value="3" min="2" max="6" inputmode="numeric">
-      </label>
+<div class="row">
+  <button id="draftRatio">レシオP1vsP2</button>
+  <button id="pickRatioBuild">レシオ3枚</button>
+</div>
+<div class="row">
+  <label class="small">枚数
+    <input type="number" id="cnt" value="3" min="2" max="6" inputmode="numeric">
+  </label>
+</div>
+
 
       <!-- P1/P2 それぞれの Min/Max -->
       <span class="small" style="margin-left:8px">P1:</span>
