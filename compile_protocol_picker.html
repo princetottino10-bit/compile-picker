@@ -1,10 +1,10 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>Compile Protocol Picker (Ratio/Capacity preset)</title>
+<title>Compile Protocol Picker (Ratio only)</title>
 <style>
   body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP","Yu Gothic",Meiryo,Arial,sans-serif;background:#0d1117;color:#e6edf3;margin:24px}
   h1{font-size:20px;margin:0 0 10px}
-  .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   .card{background:#111827;border:1px solid #263244;border-radius:12px;padding:12px}
   .row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
   textarea{width:100%;min-height:120px;background:#0b1220;color:#e6edf3;border:1px solid #263244;border-radius:10px;padding:8px}
@@ -14,17 +14,16 @@
   .result{white-space:pre-wrap;background:#0b1220;border:1px dashed #2d3a4a;border-radius:10px;padding:10px;min-height:90px;margin-top:8px}
   .small{color:#9aa6b2;font-size:12px}
   .pill{display:inline-block;padding:4px 8px;border:1px solid #2d3a4a;border-radius:999px;margin:4px 6px 0 0}
-  .badge{display:inline-block;background:#0b1220;border:1px solid #2d3a4a;border-radius:9999px;padding:4px 10px;margin-left:6px}
-  @media(max-width:1100px){.grid{grid-template-columns:1fr}}
+  @media(max-width:1000px){.grid{grid-template-columns:1fr}}
 </style>
 
-<h1>Compile Protocol Picker（レシオ/キャパシティ）<span id="activeMap" class="badge">使用中: RATIO</span></h1>
+<h1>Compile Protocol Picker（レシオ制）</h1>
 
 <div class="grid">
   <!-- プール -->
   <div class="card">
     <div class="row">
-      <label class="small"><input type="checkbox" id="aux"> Aux 1（HATE / LOVE / APATHY）を追加</label>
+      <label class="small"><input type="checkbox" id="auxToggle"> Aux 1（HATE / LOVE / APATHY）を除外</label>
       <span class="small">行ごとに1プロトコル。編集可。</span>
     </div>
     <textarea id="pool">DEATH
@@ -47,34 +46,23 @@ WATER</textarea>
     <div id="chips"></div>
   </div>
 
-  <!-- 抽選 -->
+  <!-- 抽選＆レシオ -->
   <div class="card">
     <div class="row">
       <button id="pick1">1枚ランダム</button>
       <button id="pick3">3枚（重複なし）</button>
-      <button id="draft">ドラフト（P1→P2×2→P1×2→P2）</button>
+      <button id="draftRatio">レシオ制ドラフト（P1 vs P2）</button>
     </div>
     <div class="row">
-      <button id="pickCost">コスト合計でランダム構築</button>
+      <button id="pickRatioBuild">レシオ制デッキ構築</button>
       <label class="small">枚数 <input type="number" id="cnt" value="3" min="2" max="6"></label>
       <label class="small">合計Min <input type="number" id="minSum" value="7"></label>
       <label class="small">合計Max <input type="number" id="maxSum" value="8"></label>
     </div>
     <div id="out" class="result"></div>
-    <p class="small">※判定は「使用中マップ（RATIO/CAPACITY）」の値。CAPACITYは各値を8で上限クリップ。</p>
-  </div>
-
-  <!-- マップ編集 -->
-  <div class="card">
-    <h3 style="margin:0 0 6px;">数値マップ</h3>
-    <div class="row">
-      <button id="useRatio">レシオを使う</button>
-      <button id="useCapacity">キャパシティを使う</button>
-      <button id="swapMaps">レシオ↔キャパシティ 入れ替え</button>
-    </div>
     <div class="row">
       <div style="flex:1">
-        <div class="small">レシオ（初期値はあなたの設定）</div>
+        <div class="small">レシオ（初期値はあなたの設定 / 0許可）</div>
         <textarea id="ratioTA">FIRE=5
 DARKNESS=5
 PSYCHIC=5
@@ -92,43 +80,22 @@ APATHY=0
 METAL=0</textarea>
         <button id="saveRatio">レシオを保存</button>
       </div>
-      <div style="flex:1">
-        <div class="small">キャパシティ（初期値は上と同じ／各値は計算時に最大8へ丸め）</div>
-        <textarea id="capacityTA">FIRE=5
-DARKNESS=5
-PSYCHIC=5
-HATE=5
-WATER=3
-DEATH=3
-GRAVITY=3
-LOVE=2
-PLAGUE=2
-LIFE=2
-LIGHT=1
-SPEED=1
-SPIRIT=1
-APATHY=0
-METAL=0</textarea>
-        <button id="saveCapacity">キャパシティを保存</button>
-      </div>
     </div>
-    <div id="mapView" class="small" style="margin-top:8px;"></div>
+    <div id="ratioView" class="small" style="margin-top:8px;"></div>
   </div>
 </div>
 
 <script>
 const dMain = ["DEATH","FIRE","GRAVITY","LIFE","LIGHT","METAL","PLAGUE","PSYCHIC","SPEED","SPIRIT","DARKNESS","WATER"];
 const auxSet = ["HATE","LOVE","APATHY"];
-const LS_KEYS = { pool:"compile.pool", ratio:"compile.ratio", capacity:"compile.capacity", active:"compile.activeMap", params:"compile.params" };
+const LS = { pool:"compile.pool", ratio:"compile.ratio", params:"compile.params", aux:"compile.auxExcluded" };
 
 const poolTA = document.getElementById('pool');
 const chips = document.getElementById('chips');
-const includeAux = document.getElementById('aux');
+const auxToggle = document.getElementById('auxToggle');
 const out = document.getElementById('out');
 const ratioTA = document.getElementById('ratioTA');
-const capacityTA = document.getElementById('capacityTA');
-const activeBadge = document.getElementById('activeMap');
-const mapView = document.getElementById('mapView');
+const ratioView = document.getElementById('ratioView');
 const cntIn = document.getElementById('cnt');
 const minIn = document.getElementById('minSum');
 const maxIn = document.getElementById('maxSum');
@@ -144,111 +111,152 @@ function renderChips(){ const pool=getPool(); chips.innerHTML = pool.map(p=>`<sp
 function shuffle(a){ const arr=a.slice(); for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
 function sample(a,n){ return shuffle(a).slice(0, Math.min(n,a.length)); }
 
-function parseMap(text){
+function parseRatio(text){
   const map = Object.create(null);
   for(const line of (text||"").split(/\r?\n/)){
     const t=(line||"").trim(); if(!t) continue;
     const idx=t.indexOf("="); if(idx<0) continue;
     const k=t.slice(0,idx).trim().toUpperCase();
     const v=Number(t.slice(idx+1).trim());
-    // 0を許可（APATHY/METAL対応）
-    if(k && !isNaN(v) && v>=0) map[k]=v;
+    if(k && !isNaN(v) && v>=0) map[k]=v; // 0を許可
   }
   return map;
 }
-function clip8(v){ return Math.min(8, Math.max(0, v)); }
-
-function getActiveKey(){ return localStorage.getItem(LS_KEYS.active) || "RATIO"; }
-function setActiveKey(k){ localStorage.setItem(LS_KEYS.active, k); activeBadge.textContent="使用中: "+k; showActivePreview(); }
-
-function getActiveMap(){
-  const key = getActiveKey();
-  const ratioMap = parseMap(localStorage.getItem(LS_KEYS.ratio) || ratioTA.value);
-  const capacityMap = parseMap(localStorage.getItem(LS_KEYS.capacity) || capacityTA.value);
-  if(key==="CAPACITY"){
-    // 計算時は各値を最大8に丸めて使用
-    const capped = Object.create(null);
-    for(const [k,v] of Object.entries(capacityMap)){ capped[k]=clip8(v); }
-    return capped;
-  }
-  return ratioMap;
-}
-function showActivePreview(){
-  const pool = getPool(), m = getActiveMap();
-  const rows = pool.map(k => `${k}: ${m[k] ?? 1}`);
-  mapView.textContent = "現在の適用数値（"+getActiveKey()+"） → " + rows.join(" / ");
+function ratioOf(k){ const R=parseRatio(localStorage.getItem(LS.ratio) || ratioTA.value); return R[k] ?? 1; }
+function showRatioPreview(){
+  const pool = getPool(); const R = parseRatio(localStorage.getItem(LS.ratio) || ratioTA.value);
+  const rows = pool.map(k => `${k}: ${R[k] ?? 1}`);
+  ratioView.textContent = "現在のレシオ → " + rows.join(" / ");
 }
 
 function saveAll(){
-  localStorage.setItem(LS_KEYS.pool, poolTA.value);
-  localStorage.setItem(LS_KEYS.ratio, ratioTA.value);
-  localStorage.setItem(LS_KEYS.capacity, capacityTA.value);
-  localStorage.setItem(LS_KEYS.params, JSON.stringify({cnt:+cntIn.value, min:+minIn.value, max:+maxIn.value}));
+  localStorage.setItem(LS.pool, poolTA.value);
+  localStorage.setItem(LS.ratio, ratioTA.value);
+  localStorage.setItem(LS.params, JSON.stringify({cnt:+cntIn.value, min:+minIn.value, max:+maxIn.value}));
+  localStorage.setItem(LS.aux, auxToggle.checked ? "1" : "0");
 }
-
 function loadAll(){
-  const pool = localStorage.getItem(LS_KEYS.pool);
-  if(pool){ poolTA.value = pool; } else { setPool(dMain); }
-  const r = localStorage.getItem(LS_KEYS.ratio); if(r) ratioTA.value = r;
-  const c = localStorage.getItem(LS_KEYS.capacity); if(c) capacityTA.value = c;
-  const params = localStorage.getItem(LS_KEYS.params);
+  // Aux初期：含める（= 除外OFF）
+  auxToggle.checked = (localStorage.getItem(LS.aux) ?? "0") === "1";
+
+  const poolSaved = localStorage.getItem(LS.pool);
+  if(poolSaved){ poolTA.value = poolSaved; }
+  else{
+    // 初期は Main + Aux1 を含める
+    setPool(dMain.concat(auxSet));
+  }
+  const rSaved = localStorage.getItem(LS.ratio); if(rSaved) ratioTA.value = rSaved;
+  const params = localStorage.getItem(LS.params);
   if(params){ try{ const p=JSON.parse(params)||{}; cntIn.value=p.cnt??3; minIn.value=p.min??7; maxIn.value=p.max??8; }catch(e){} }
-  renderChips(); showActivePreview();
+
+  // Aux 除外ONなら削除、OFFなら追加
+  if(auxToggle.checked){
+    setPool(getPool().filter(x=>!auxSet.includes(x)));
+  }else{
+    const cur=getPool(); const add=auxSet.filter(x=>!cur.includes(x));
+    if(add.length) setPool(cur.concat(add));
+  }
+  renderChips(); showRatioPreview();
 }
 
-document.getElementById('reset').onclick = ()=>{ const list=dMain.slice(); if(includeAux.checked) list.push(...auxSet); setPool(list); out.textContent=""; saveAll(); showActivePreview(); };
+document.getElementById('reset').onclick = ()=>{
+  let list = dMain.slice();
+  if(!auxToggle.checked) list = list.concat(auxSet);
+  setPool(list); out.textContent=""; saveAll(); showRatioPreview();
+};
 document.getElementById('shuffle').onclick = ()=>{ setPool(shuffle(getPool())); saveAll(); };
 document.getElementById('clear').onclick = ()=> out.textContent="";
-
 document.getElementById('pick1').onclick = ()=>{ const p=getPool(); out.textContent = p.length?("🎲 1枚ランダム\n"+sample(p,1)[0]):"リストが空です。"; };
 document.getElementById('pick3').onclick = ()=>{ const p=getPool(); out.textContent = p.length?("🎲 3枚（重複なし）\n- "+sample(p,3).join("\n- ")):"リストが空です。"; };
-document.getElementById('draft').onclick = ()=>{
-  let p=shuffle(getPool()); if(p.length<6){ out.textContent="ドラフトには最低6プロトコルが必要です。"; return; }
-  const P1=[],P2=[],take=n=>p.splice(0,n),fmt=a=>a.map((x,i)=>`${i+1}. ${x}`).join("\n");
-  P1.push(...take(1)); P2.push(...take(2)); P1.push(...take(2)); P2.push(...take(1));
-  out.textContent = `🌀 ランダムドラフト\n\nP1\n${fmt(P1)}\n\nP2\n${fmt(P2)}\n\n残り (${p.length})\n- ${p.join(", ")}`;
-};
 
-document.getElementById('pickCost').onclick = ()=>{
+// レシオ制デッキ構築（N枚、合計min〜max、表示は NAME(V)）
+document.getElementById('pickRatioBuild').onclick = ()=>{
   const pool = getPool(), N=+cntIn.value, minS=+minIn.value, maxS=+maxIn.value;
   if(pool.length<N){ out.textContent="プールが少なすぎます（"+N+"以上必要）。"; return; }
-  const M = getActiveMap(); const cost = k => (M[k] ?? 1);
-  // 汎用N組合せ
+  const cost = k => ratioOf(k);
   const combos=[];
   function rec(start, acc, sum){
-    if(acc.length===N){ if(sum>=minS && sum<=maxS) combos.push({tri:acc.slice(), s:sum}); return; }
+    if(acc.length===N){ if(sum>=minS && sum<=maxS) combos.push({arr:acc.slice(), s:sum}); return; }
     for(let i=start;i<pool.length;i++){
       const k=pool[i]; acc.push(k); rec(i+1, acc, sum+cost(k)); acc.pop();
     }
   }
   rec(0, [], 0);
-  if(!combos.length){ out.textContent="条件（合計"+minS+"〜"+maxS+" / "+N+"枚）に合う組み合わせが見つかりません。数値やプールを見直してください。"; return; }
+  if(!combos.length){ out.textContent="条件（合計"+minS+"〜"+maxS+" / "+N+"枚）に合う組み合わせが見つかりません。レシオやプールを見直してください。"; return; }
   const pick = combos[Math.floor(Math.random()*combos.length)];
-  out.textContent = `🧮 コスト合計（${minS}〜${maxS} / ${N}枚）\n- ${pick.tri.join("\n- ")}\n合計: ${pick.s}（マップ: ${getActiveKey()}）`;
+  const listed = pick.arr.map(k => `${k}(${cost(k)})`).join("\n- ");
+  out.textContent = `🧮 レシオ制デッキ構築（${minS}〜${maxS} / ${N}枚）\n- ${listed}\n合計: ${pick.s}`;
 };
 
-// マップ保存/切替/入替
-document.getElementById('saveRatio').onclick = ()=>{ localStorage.setItem(LS_KEYS.ratio, ratioTA.value); saveAll(); showActivePreview(); };
-document.getElementById('saveCapacity').onclick = ()=>{ localStorage.setItem(LS_KEYS.capacity, capacityTA.value); saveAll(); showActivePreview(); };
-document.getElementById('useRatio').onclick = ()=> setActiveKey("RATIO");
-document.getElementById('useCapacity').onclick = ()=> setActiveKey("CAPACITY");
-document.getElementById('swapMaps').onclick = ()=>{ const r=ratioTA.value, c=capacityTA.value; ratioTA.value=c; capacityTA.value=r; saveAll(); showActivePreview(); };
+// レシオ制ドラフト（P1 vs P2）：各N枚・両者とも合計min〜max
+document.getElementById('draftRatio').onclick = ()=>{
+  const pool = getPool(), N=+cntIn.value, minS=+minIn.value, maxS=+maxIn.value;
+  if(pool.length < 2*N){ out.textContent="プールが少なすぎます（"+(2*N)+"以上必要）。"; return; }
+  const cost = k => ratioOf(k);
 
-includeAux.addEventListener('change', ()=>{
-  let l=getPool(); if(includeAux.checked){ for(const x of auxSet) if(!l.includes(x)) l.push(x); setPool(l); }
-  else{ setPool(l.filter(x=>!auxSet.includes(x))); }
-  saveAll(); showActivePreview();
+  // まずN枚で条件を満たす全組合せを列挙
+  const combos=[];
+  function rec(start, acc, sum){
+    if(acc.length===N){ if(sum>=minS && sum<=maxS) combos.push({set:new Set(acc), arr:acc.slice(), s:sum}); return; }
+    for(let i=start;i<pool.length;i++){
+      const k=pool[i]; acc.push(k); rec(i+1, acc, sum+cost(k)); acc.pop();
+    }
+  }
+  rec(0, [], 0);
+  if(!combos.length){ out.textContent="条件を満たす"+N+"枚セットが見つかりません。"; return; }
+
+  // 2人分：互いに重ならない2セットを探す（ランダム順で試す）
+  const order = shuffle(combos);
+  let best = null;
+  outer: for(const c1 of order){
+    for(const c2 of order){
+      if(c1===c2) continue;
+      let disjoint = true;
+      for(const k of c1.set){ if(c2.set.has(k)){ disjoint=false; break; } }
+      if(disjoint){ best = [c1, c2]; break outer; }
+    }
+  }
+  if(!best){ out.textContent="互いに重複しない2セットが作れません。プールや条件を見直してください。"; return; }
+
+  // 先行をランダムに決定
+  const first = Math.random()<0.5 ? "P1" : "P2";
+  const P1 = best[0].arr.slice(), P2 = best[1].arr.slice();
+
+  // 表示（名前(レシオ)）
+  const fmt = a => a.map((k,i)=>`${i+1}. ${k}(${cost(k)})`).join("\n");
+  out.textContent =
+`🌀 レシオ制ドラフト（各${N}枚 / 合計${minS}〜${maxS}）
+先行: ${first}
+ドラフト順: P1→P2×2→P1×2→P2
+
+P1 合計=${best[0].s}
+${fmt(P1)}
+
+P2 合計=${best[1].s}
+${fmt(P2)}
+
+残りプール (${pool.length - P1.length - P2.length})
+- ${pool.filter(x=>!P1.includes(x)&&!P2.includes(x)).join(", ")}`;
+};
+
+document.getElementById('saveRatio').onclick = ()=>{ localStorage.setItem(LS.ratio, ratioTA.value); saveAll(); showRatioPreview(); };
+
+auxToggle.addEventListener('change', ()=>{
+  let l=getPool();
+  if(auxToggle.checked){ setPool(l.filter(x=>!auxSet.includes(x))); }
+  else{ for(const x of auxSet) if(!l.includes(x)) l.push(x); setPool(l); }
+  saveAll(); showRatioPreview();
 });
-poolTA.addEventListener('input', ()=>{ renderChips(); saveAll(); showActivePreview(); });
+poolTA.addEventListener('input', ()=>{ renderChips(); saveAll(); showRatioPreview(); });
 [cntIn, minIn, maxIn].forEach(el=>el.addEventListener('input', saveAll));
 
-// 初期ロード：レシオ/キャパ/パラメータ未保存なら、ここでデフォ値を採用（RATIOを使用）
-if(!localStorage.getItem(LS_KEYS.ratio)) localStorage.setItem(LS_KEYS.ratio, document.getElementById('ratioTA').value);
-if(!localStorage.getItem(LS_KEYS.capacity)) localStorage.setItem(LS_KEYS.capacity, document.getElementById('capacityTA').value);
-if(!localStorage.getItem(LS_KEYS.params)) localStorage.setItem(LS_KEYS.params, JSON.stringify({cnt:3,min:7,max:8}));
-if(!localStorage.getItem(LS_KEYS.pool)) localStorage.setItem(LS_KEYS.pool, document.getElementById('pool').value);
-if(!localStorage.getItem(LS_KEYS.active)) localStorage.setItem(LS_KEYS.active, "RATIO");
+// 初期化：ローカル保存が無ければ、レシオ初期値・パラメータ・プール(Main+Aux)を投入
+if(!localStorage.getItem(LS.ratio)) localStorage.setItem(LS.ratio, document.getElementById('ratioTA').value);
+if(!localStorage.getItem(LS.params)) localStorage.setItem(LS.params, JSON.stringify({cnt:3,min:7,max:8}));
+if(localStorage.getItem(LS.aux)===null) localStorage.setItem(LS.aux,"0");
+if(!localStorage.getItem(LS.pool)){
+  localStorage.setItem(LS.pool, dMain.concat(auxSet).join("\n"));
+}
 
-setActiveKey(localStorage.getItem(LS_KEYS.active));
 loadAll();
 </script>
