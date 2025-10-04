@@ -304,9 +304,8 @@ document.getElementById('draftRatio').onclick = ()=>{
 
   out.textContent =
 `🌀 レシオ制ドラフト（各${N}枚）
-先行: ${first}
+先攻: ${first}
 P1条件: 合計${minP1.value}〜${maxP1.value} / P2条件: 合計${minP2.value}〜${maxP2.value}
-ドラフト順: P1→P2×2→P1×2→P2
 
 P1 合計=${best[0].s}
 ${fmt(P1)}
@@ -343,8 +342,7 @@ document.getElementById('draftRandom').onclick = ()=>{
   const fmt = a => a.map((k,i)=>`${i+1}. ${k}`).join("\n");
   out.textContent =
 `🎲 完全ランダムドラフト（各${N}枚／コスト無視）
-先行: ${first}
-ドラフト順: P1→P2×2→P1×2→P2
+先攻: ${first}
 
 P1
 ${fmt(picks.P1)}
