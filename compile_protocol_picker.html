@@ -38,9 +38,7 @@
 
 <div class="grid">
   <!-- ① 上段：ランダム優先 + Aux1除外 + P1/P2設定 -->
-        <label class="small" style="display:flex;align-items:center;gap:6px;margin-left:auto;">
-        <input type="checkbox" id="auxToggle"> Aux1（HATE/LOVE/APATHY）を除外
-      </label>
+
   <div class="card" style="grid-column:1 / -1">
     <div class="row">
       <button id="draftRandom">ランダムP1vsP2</button>
@@ -68,11 +66,14 @@
       <label class="small">Max <input type="number" id="p2Max" value="8" inputmode="numeric"></label>
 
       <!-- 構築で使う設定の選択 -->
-      <label class="small" style="margin-left:auto;">構築の判定設定
+      <label class="small" style="margin-left:auto;">レシオ3枚の判定
         <select id="buildSide">
           <option value="P1">P1の設定</option>
           <option value="P2">P2の設定</option>
         </select>
+      </label>
+            <label class="small" style="display:flex;align-items:center;gap:6px;margin-left:auto;">
+        <input type="checkbox" id="auxToggle"> Aux1（HATE/LOVE/APATHY）を除外
       </label>
     </div>
 
