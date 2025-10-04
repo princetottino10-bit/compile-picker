@@ -1,0 +1,57 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Compile Protocol Picker</title>
+<style>
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP","Yu Gothic",Meiryo,Arial,sans-serif;background:#0d1117;color:#e6edf3;margin:24px}
+  h1{font-size:20px;margin:0 0 10px} .row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+  textarea{width:100%;min-height:120px;background:#0b1220;color:#e6edf3;border:1px solid #263244;border-radius:10px;padding:8px}
+  button{background:#1f2937;border:1px solid #2d3a4a;color:#e6edf3;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:700}
+  button:hover{background:#263244} .result{white-space:pre-wrap;background:#0b1220;border:1px dashed #2d3a4a;border-radius:10px;padding:10px;min-height:90px;margin-top:8px}
+  .small{color:#9aa6b2;font-size:12px}
+</style>
+<h1>Compile Protocol Picker</h1>
+<label class="small"><input type="checkbox" id="aux"> Aux 1（HATE / LOVE / APATHY）を追加</label>
+<textarea id="pool">DEATH
+FIRE
+GRAVITY
+LIFE
+LIGHT
+METAL
+PLAGUE
+PSYCHIC
+SPEED
+SPIRIT
+DARKNESS
+WATER</textarea>
+<div class="row">
+  <button id="pick1">1枚ランダム</button>
+  <button id="pick3">3枚（重複なし）</button>
+  <button id="draft">ドラフト（P1→P2×2→P1×2→P2）</button>
+  <button id="reset">初期化</button>
+</div>
+<div class="result" id="out"></div>
+<p class="small">行ごとに1プロトコル。大文字化＆重複除去、自動。</p>
+<script>
+const dMain = ["DEATH","FIRE","GRAVITY","LIFE","LIGHT","METAL","PLAGUE","PSYCHIC","SPEED","SPIRIT","DARKNESS","WATER"];
+const auxSet = ["HATE","LOVE","APATHY"];
+const ta=document.getElementById('pool'), out=document.getElementById('out'), aux=document.getElementById('aux');
+const U=a=>{const s=new Set(),r=[];for(const x of a){const t=(x||"").trim().toUpperCase();if(t&&!s.has(t)){s.add(t);r.push(t)}}return r};
+const get=()=>U(ta.value.split(/\r?\n/));
+const set=a=>ta.value=a.join("\n");
+const sh=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const samp=(a,n)=>sh(a).slice(0,Math.min(n,a.length));
+
+document.getElementById('reset').onclick=()=>{let l=dMain.slice(); if(aux.checked) l.push(...auxSet); set(l); out.textContent=""};
+document.getElementById('pick1').onclick=()=>{const p=get(); out.textContent=p.length?("🎲 1枚ランダム\n"+samp(p,1)[0]):"リストが空です。"};
+document.getElementById('pick3').onclick=()=>{const p=get(); out.textContent=p.length?("🎲 3枚（重複なし）\n- "+samp(p,3).join("\n- ")): "リストが空です。"};
+document.getElementById('draft').onclick=()=>{let p=sh(get()); if(p.length<6){out.textContent="ドラフトには最低6プロトコルが必要です。";return}
+  const P1=[],P2=[],take=n=>p.splice(0,n),fmt=a=>a.map((x,i)=>`${i+1}. ${x}`).join("\n");
+  P1.push(...take(1)); P2.push(...take(2)); P1.push(...take(2)); P2.push(...take(1));
+  out.textContent=`🌀 ランダムドラフト\n\nP1\n${fmt(P1)}\n\nP2\n${fmt(P2)}\n\n残り (${p.length})\n- ${p.join(", ")}`;
+};
+aux.addEventListener('change',()=>{
+  let l=get(); const hasAll = auxSet.every(x=>l.includes(x));
+  if(aux.checked && !hasAll){ for(const x of auxSet) if(!l.includes(x)) l.push(x); set(l); }
+  else if(!aux.checked){ set(l.filter(x=>!auxSet.includes(x))); }
+});
+</script>
