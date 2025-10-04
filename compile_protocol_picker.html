@@ -284,8 +284,7 @@ document.getElementById('draftRandom').onclick = ()=>{
   const fmt = a => a.map((k,i)=>`${i+1}. ${k}`).join("\n");
   out.textContent =
 `🎲 完全ランダムドラフト（各${N}枚／コスト無視）
-先行: ${first}
-ドラフト順: P1→P2×2→P1×2→P2
+先攻: ${first}
 
 P1
 ${fmt(picks.P1)}
