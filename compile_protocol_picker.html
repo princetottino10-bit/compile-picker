@@ -1,17 +1,33 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>Compile Protocol Picker</title>
+<title>Compile Protocol Picker (Ratio/Capacity preset)</title>
 <style>
   body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP","Yu Gothic",Meiryo,Arial,sans-serif;background:#0d1117;color:#e6edf3;margin:24px}
-  h1{font-size:20px;margin:0 0 10px} .row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+  h1{font-size:20px;margin:0 0 10px}
+  .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+  .card{background:#111827;border:1px solid #263244;border-radius:12px;padding:12px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
   textarea{width:100%;min-height:120px;background:#0b1220;color:#e6edf3;border:1px solid #263244;border-radius:10px;padding:8px}
+  input[type="number"]{background:#0b1220;color:#e6edf3;border:1px solid #263244;border-radius:8px;padding:6px 8px;width:88px}
   button{background:#1f2937;border:1px solid #2d3a4a;color:#e6edf3;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:700}
-  button:hover{background:#263244} .result{white-space:pre-wrap;background:#0b1220;border:1px dashed #2d3a4a;border-radius:10px;padding:10px;min-height:90px;margin-top:8px}
+  button:hover{background:#263244}
+  .result{white-space:pre-wrap;background:#0b1220;border:1px dashed #2d3a4a;border-radius:10px;padding:10px;min-height:90px;margin-top:8px}
   .small{color:#9aa6b2;font-size:12px}
+  .pill{display:inline-block;padding:4px 8px;border:1px solid #2d3a4a;border-radius:999px;margin:4px 6px 0 0}
+  .badge{display:inline-block;background:#0b1220;border:1px solid #2d3a4a;border-radius:9999px;padding:4px 10px;margin-left:6px}
+  @media(max-width:1100px){.grid{grid-template-columns:1fr}}
 </style>
-<h1>Compile Protocol Picker</h1>
-<label class="small"><input type="checkbox" id="aux"> Aux 1（HATE / LOVE / APATHY）を追加</label>
-<textarea id="pool">DEATH
+
+<h1>Compile Protocol Picker（レシオ/キャパシティ）<span id="activeMap" class="badge">使用中: RATIO</span></h1>
+
+<div class="grid">
+  <!-- プール -->
+  <div class="card">
+    <div class="row">
+      <label class="small"><input type="checkbox" id="aux"> Aux 1（HATE / LOVE / APATHY）を追加</label>
+      <span class="small">行ごとに1プロトコル。編集可。</span>
+    </div>
+    <textarea id="pool">DEATH
 FIRE
 GRAVITY
 LIFE
@@ -23,35 +39,216 @@ SPEED
 SPIRIT
 DARKNESS
 WATER</textarea>
-<div class="row">
-  <button id="pick1">1枚ランダム</button>
-  <button id="pick3">3枚（重複なし）</button>
-  <button id="draft">ドラフト（P1→P2×2→P1×2→P2）</button>
-  <button id="reset">初期化</button>
+    <div class="row">
+      <button id="reset">初期化</button>
+      <button id="shuffle">表示をシャッフル</button>
+      <button id="clear">結果クリア</button>
+    </div>
+    <div id="chips"></div>
+  </div>
+
+  <!-- 抽選 -->
+  <div class="card">
+    <div class="row">
+      <button id="pick1">1枚ランダム</button>
+      <button id="pick3">3枚（重複なし）</button>
+      <button id="draft">ドラフト（P1→P2×2→P1×2→P2）</button>
+    </div>
+    <div class="row">
+      <button id="pickCost">コスト合計でランダム構築</button>
+      <label class="small">枚数 <input type="number" id="cnt" value="3" min="2" max="6"></label>
+      <label class="small">合計Min <input type="number" id="minSum" value="7"></label>
+      <label class="small">合計Max <input type="number" id="maxSum" value="8"></label>
+    </div>
+    <div id="out" class="result"></div>
+    <p class="small">※判定は「使用中マップ（RATIO/CAPACITY）」の値。CAPACITYは各値を8で上限クリップ。</p>
+  </div>
+
+  <!-- マップ編集 -->
+  <div class="card">
+    <h3 style="margin:0 0 6px;">数値マップ</h3>
+    <div class="row">
+      <button id="useRatio">レシオを使う</button>
+      <button id="useCapacity">キャパシティを使う</button>
+      <button id="swapMaps">レシオ↔キャパシティ 入れ替え</button>
+    </div>
+    <div class="row">
+      <div style="flex:1">
+        <div class="small">レシオ（初期値はあなたの設定）</div>
+        <textarea id="ratioTA">FIRE=5
+DARKNESS=5
+PSYCHIC=5
+HATE=5
+WATER=3
+DEATH=3
+GRAVITY=3
+LOVE=2
+PLAGUE=2
+LIFE=2
+LIGHT=1
+SPEED=1
+SPIRIT=1
+APATHY=0
+METAL=0</textarea>
+        <button id="saveRatio">レシオを保存</button>
+      </div>
+      <div style="flex:1">
+        <div class="small">キャパシティ（初期値は上と同じ／各値は計算時に最大8へ丸め）</div>
+        <textarea id="capacityTA">FIRE=5
+DARKNESS=5
+PSYCHIC=5
+HATE=5
+WATER=3
+DEATH=3
+GRAVITY=3
+LOVE=2
+PLAGUE=2
+LIFE=2
+LIGHT=1
+SPEED=1
+SPIRIT=1
+APATHY=0
+METAL=0</textarea>
+        <button id="saveCapacity">キャパシティを保存</button>
+      </div>
+    </div>
+    <div id="mapView" class="small" style="margin-top:8px;"></div>
+  </div>
 </div>
-<div class="result" id="out"></div>
-<p class="small">行ごとに1プロトコル。大文字化＆重複除去、自動。</p>
+
 <script>
 const dMain = ["DEATH","FIRE","GRAVITY","LIFE","LIGHT","METAL","PLAGUE","PSYCHIC","SPEED","SPIRIT","DARKNESS","WATER"];
 const auxSet = ["HATE","LOVE","APATHY"];
-const ta=document.getElementById('pool'), out=document.getElementById('out'), aux=document.getElementById('aux');
-const U=a=>{const s=new Set(),r=[];for(const x of a){const t=(x||"").trim().toUpperCase();if(t&&!s.has(t)){s.add(t);r.push(t)}}return r};
-const get=()=>U(ta.value.split(/\r?\n/));
-const set=a=>ta.value=a.join("\n");
-const sh=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
-const samp=(a,n)=>sh(a).slice(0,Math.min(n,a.length));
+const LS_KEYS = { pool:"compile.pool", ratio:"compile.ratio", capacity:"compile.capacity", active:"compile.activeMap", params:"compile.params" };
 
-document.getElementById('reset').onclick=()=>{let l=dMain.slice(); if(aux.checked) l.push(...auxSet); set(l); out.textContent=""};
-document.getElementById('pick1').onclick=()=>{const p=get(); out.textContent=p.length?("🎲 1枚ランダム\n"+samp(p,1)[0]):"リストが空です。"};
-document.getElementById('pick3').onclick=()=>{const p=get(); out.textContent=p.length?("🎲 3枚（重複なし）\n- "+samp(p,3).join("\n- ")): "リストが空です。"};
-document.getElementById('draft').onclick=()=>{let p=sh(get()); if(p.length<6){out.textContent="ドラフトには最低6プロトコルが必要です。";return}
+const poolTA = document.getElementById('pool');
+const chips = document.getElementById('chips');
+const includeAux = document.getElementById('aux');
+const out = document.getElementById('out');
+const ratioTA = document.getElementById('ratioTA');
+const capacityTA = document.getElementById('capacityTA');
+const activeBadge = document.getElementById('activeMap');
+const mapView = document.getElementById('mapView');
+const cntIn = document.getElementById('cnt');
+const minIn = document.getElementById('minSum');
+const maxIn = document.getElementById('maxSum');
+
+function uniq(lines){
+  const seen=new Set(), arr=[];
+  for(const s of lines){ const t=(s||"").trim().toUpperCase(); if(t && !seen.has(t)){ seen.add(t); arr.push(t); } }
+  return arr;
+}
+function getPool(){ return uniq(poolTA.value.split(/\r?\n/)); }
+function setPool(list){ poolTA.value = list.join("\n"); renderChips(); }
+function renderChips(){ const pool=getPool(); chips.innerHTML = pool.map(p=>`<span class="pill">${p}</span>`).join(""); }
+function shuffle(a){ const arr=a.slice(); for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
+function sample(a,n){ return shuffle(a).slice(0, Math.min(n,a.length)); }
+
+function parseMap(text){
+  const map = Object.create(null);
+  for(const line of (text||"").split(/\r?\n/)){
+    const t=(line||"").trim(); if(!t) continue;
+    const idx=t.indexOf("="); if(idx<0) continue;
+    const k=t.slice(0,idx).trim().toUpperCase();
+    const v=Number(t.slice(idx+1).trim());
+    // 0を許可（APATHY/METAL対応）
+    if(k && !isNaN(v) && v>=0) map[k]=v;
+  }
+  return map;
+}
+function clip8(v){ return Math.min(8, Math.max(0, v)); }
+
+function getActiveKey(){ return localStorage.getItem(LS_KEYS.active) || "RATIO"; }
+function setActiveKey(k){ localStorage.setItem(LS_KEYS.active, k); activeBadge.textContent="使用中: "+k; showActivePreview(); }
+
+function getActiveMap(){
+  const key = getActiveKey();
+  const ratioMap = parseMap(localStorage.getItem(LS_KEYS.ratio) || ratioTA.value);
+  const capacityMap = parseMap(localStorage.getItem(LS_KEYS.capacity) || capacityTA.value);
+  if(key==="CAPACITY"){
+    // 計算時は各値を最大8に丸めて使用
+    const capped = Object.create(null);
+    for(const [k,v] of Object.entries(capacityMap)){ capped[k]=clip8(v); }
+    return capped;
+  }
+  return ratioMap;
+}
+function showActivePreview(){
+  const pool = getPool(), m = getActiveMap();
+  const rows = pool.map(k => `${k}: ${m[k] ?? 1}`);
+  mapView.textContent = "現在の適用数値（"+getActiveKey()+"） → " + rows.join(" / ");
+}
+
+function saveAll(){
+  localStorage.setItem(LS_KEYS.pool, poolTA.value);
+  localStorage.setItem(LS_KEYS.ratio, ratioTA.value);
+  localStorage.setItem(LS_KEYS.capacity, capacityTA.value);
+  localStorage.setItem(LS_KEYS.params, JSON.stringify({cnt:+cntIn.value, min:+minIn.value, max:+maxIn.value}));
+}
+
+function loadAll(){
+  const pool = localStorage.getItem(LS_KEYS.pool);
+  if(pool){ poolTA.value = pool; } else { setPool(dMain); }
+  const r = localStorage.getItem(LS_KEYS.ratio); if(r) ratioTA.value = r;
+  const c = localStorage.getItem(LS_KEYS.capacity); if(c) capacityTA.value = c;
+  const params = localStorage.getItem(LS_KEYS.params);
+  if(params){ try{ const p=JSON.parse(params)||{}; cntIn.value=p.cnt??3; minIn.value=p.min??7; maxIn.value=p.max??8; }catch(e){} }
+  renderChips(); showActivePreview();
+}
+
+document.getElementById('reset').onclick = ()=>{ const list=dMain.slice(); if(includeAux.checked) list.push(...auxSet); setPool(list); out.textContent=""; saveAll(); showActivePreview(); };
+document.getElementById('shuffle').onclick = ()=>{ setPool(shuffle(getPool())); saveAll(); };
+document.getElementById('clear').onclick = ()=> out.textContent="";
+
+document.getElementById('pick1').onclick = ()=>{ const p=getPool(); out.textContent = p.length?("🎲 1枚ランダム\n"+sample(p,1)[0]):"リストが空です。"; };
+document.getElementById('pick3').onclick = ()=>{ const p=getPool(); out.textContent = p.length?("🎲 3枚（重複なし）\n- "+sample(p,3).join("\n- ")):"リストが空です。"; };
+document.getElementById('draft').onclick = ()=>{
+  let p=shuffle(getPool()); if(p.length<6){ out.textContent="ドラフトには最低6プロトコルが必要です。"; return; }
   const P1=[],P2=[],take=n=>p.splice(0,n),fmt=a=>a.map((x,i)=>`${i+1}. ${x}`).join("\n");
   P1.push(...take(1)); P2.push(...take(2)); P1.push(...take(2)); P2.push(...take(1));
-  out.textContent=`🌀 ランダムドラフト\n\nP1\n${fmt(P1)}\n\nP2\n${fmt(P2)}\n\n残り (${p.length})\n- ${p.join(", ")}`;
+  out.textContent = `🌀 ランダムドラフト\n\nP1\n${fmt(P1)}\n\nP2\n${fmt(P2)}\n\n残り (${p.length})\n- ${p.join(", ")}`;
 };
-aux.addEventListener('change',()=>{
-  let l=get(); const hasAll = auxSet.every(x=>l.includes(x));
-  if(aux.checked && !hasAll){ for(const x of auxSet) if(!l.includes(x)) l.push(x); set(l); }
-  else if(!aux.checked){ set(l.filter(x=>!auxSet.includes(x))); }
+
+document.getElementById('pickCost').onclick = ()=>{
+  const pool = getPool(), N=+cntIn.value, minS=+minIn.value, maxS=+maxIn.value;
+  if(pool.length<N){ out.textContent="プールが少なすぎます（"+N+"以上必要）。"; return; }
+  const M = getActiveMap(); const cost = k => (M[k] ?? 1);
+  // 汎用N組合せ
+  const combos=[];
+  function rec(start, acc, sum){
+    if(acc.length===N){ if(sum>=minS && sum<=maxS) combos.push({tri:acc.slice(), s:sum}); return; }
+    for(let i=start;i<pool.length;i++){
+      const k=pool[i]; acc.push(k); rec(i+1, acc, sum+cost(k)); acc.pop();
+    }
+  }
+  rec(0, [], 0);
+  if(!combos.length){ out.textContent="条件（合計"+minS+"〜"+maxS+" / "+N+"枚）に合う組み合わせが見つかりません。数値やプールを見直してください。"; return; }
+  const pick = combos[Math.floor(Math.random()*combos.length)];
+  out.textContent = `🧮 コスト合計（${minS}〜${maxS} / ${N}枚）\n- ${pick.tri.join("\n- ")}\n合計: ${pick.s}（マップ: ${getActiveKey()}）`;
+};
+
+// マップ保存/切替/入替
+document.getElementById('saveRatio').onclick = ()=>{ localStorage.setItem(LS_KEYS.ratio, ratioTA.value); saveAll(); showActivePreview(); };
+document.getElementById('saveCapacity').onclick = ()=>{ localStorage.setItem(LS_KEYS.capacity, capacityTA.value); saveAll(); showActivePreview(); };
+document.getElementById('useRatio').onclick = ()=> setActiveKey("RATIO");
+document.getElementById('useCapacity').onclick = ()=> setActiveKey("CAPACITY");
+document.getElementById('swapMaps').onclick = ()=>{ const r=ratioTA.value, c=capacityTA.value; ratioTA.value=c; capacityTA.value=r; saveAll(); showActivePreview(); };
+
+includeAux.addEventListener('change', ()=>{
+  let l=getPool(); if(includeAux.checked){ for(const x of auxSet) if(!l.includes(x)) l.push(x); setPool(l); }
+  else{ setPool(l.filter(x=>!auxSet.includes(x))); }
+  saveAll(); showActivePreview();
 });
+poolTA.addEventListener('input', ()=>{ renderChips(); saveAll(); showActivePreview(); });
+[cntIn, minIn, maxIn].forEach(el=>el.addEventListener('input', saveAll));
+
+// 初期ロード：レシオ/キャパ/パラメータ未保存なら、ここでデフォ値を採用（RATIOを使用）
+if(!localStorage.getItem(LS_KEYS.ratio)) localStorage.setItem(LS_KEYS.ratio, document.getElementById('ratioTA').value);
+if(!localStorage.getItem(LS_KEYS.capacity)) localStorage.setItem(LS_KEYS.capacity, document.getElementById('capacityTA').value);
+if(!localStorage.getItem(LS_KEYS.params)) localStorage.setItem(LS_KEYS.params, JSON.stringify({cnt:3,min:7,max:8}));
+if(!localStorage.getItem(LS_KEYS.pool)) localStorage.setItem(LS_KEYS.pool, document.getElementById('pool').value);
+if(!localStorage.getItem(LS_KEYS.active)) localStorage.setItem(LS_KEYS.active, "RATIO");
+
+setActiveKey(localStorage.getItem(LS_KEYS.active));
+loadAll();
 </script>
