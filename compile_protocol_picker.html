@@ -51,10 +51,11 @@ WATER</textarea>
     <div class="row">
       <button id="pick1">1枚ランダム</button>
       <button id="pick3">3枚（重複なし）</button>
+      <button id="pickRatioBuild">レシオ制デッキ構築</button>
+      <button id="draftRandom">完全ランダムドラフト（P1 vs P2）</button>
       <button id="draftRatio">レシオ制ドラフト（P1 vs P2）</button>
     </div>
     <div class="row">
-      <button id="pickRatioBuild">レシオ制デッキ構築</button><button id="draftRandom">完全ランダムドラフト（P1 vs P2）</button>
       <label class="small">枚数 <input type="number" id="cnt" value="3" min="2" max="6"></label>
       <label class="small">合計Min <input type="number" id="minSum" value="7"></label>
       <label class="small">合計Max <input type="number" id="maxSum" value="8"></label>
@@ -259,4 +260,65 @@ if(!localStorage.getItem(LS.pool)){
 }
 
 loadAll();
+  <script>
+// …既存の関数・変数はそのまま…
+
+// 汎用スネーク順を作る（P1:1 → P2:2 → P1:2 → P2:1 を繰り返し、残り枚数に合わせて切り詰め）
+function makeSnakeSequence(nEach){
+  const seqPattern = [['P1',1],['P2',2],['P1',2],['P2',1]];
+  const rem = {P1:nEach, P2:nEach};
+  const seq = [];
+  let i = 0;
+  while (rem.P1 > 0 || rem.P2 > 0) {
+    const [who, take] = seqPattern[i % seqPattern.length];
+    const actual = Math.min(take, rem[who]);
+    if (actual > 0) { seq.push([who, actual]); rem[who] -= actual; }
+    i++; if (i > 200) break; // セーフティ
+  }
+  return seq;
+}
+
+// ★ 完全ランダムドラフト（コスト無視・スネーク順に従って配分）
+document.getElementById('draftRandom').onclick = ()=>{
+  const pool = getPool().slice();
+  const N = +cntIn.value;         // 各プレイヤーの枚数（UIと連動）
+  if (pool.length < 2 * N) { out.textContent = `プールが少なすぎます（${2*N}以上必要）。`; return; }
+
+  // 先行をランダム決定（表示用）。配分はスネーク順を「先行側=ベースP1」として行う。
+  const first = Math.random() < 0.5 ? 'P1' : 'P2';
+
+  // ドラフト順に使うプールをシャッフル
+  const bag = shuffle(pool);
+
+  // 先行がP2の場合は、役割を入れ替えてシーケンス適用
+  const seq = makeSnakeSequence(N).map(([who, take])=>{
+    if (first === 'P1') return [who, take];
+    // 先行がP2ならP1<->P2をスワップ
+    return [who === 'P1' ? 'P2' : 'P1', take];
+  });
+
+  const picks = {P1:[], P2:[]};
+  for (const [who, take] of seq) {
+    picks[who].push(...bag.splice(0, take));
+  }
+
+  // 表示
+  const fmt = a => a.map((k,i)=>`${i+1}. ${k}`).join("\n");
+  const leftover = bag.join(", ");
+  out.textContent =
+`🎲 完全ランダムドラフト（各${N}枚／コスト無視）
+先行: ${first}
+ドラフト順: P1→P2×2→P1×2→P2
+
+P1
+${fmt(picks.P1)}
+
+P2
+${fmt(picks.P2)}
+
+残りプール (${bag.length})
+- ${leftover}`;
+};
+</script>
+
 </script>
