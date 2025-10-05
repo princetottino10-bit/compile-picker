@@ -83,11 +83,7 @@
     </div>
 
     <!-- 下部固定アクション（親指用） -->
-    <div class="sticky-actions">
-      <button id="runDraftRandom">ランダムドラフト</button>
-      <button id="runDraftRatio">レシオドラフト</button>
-      <button id="runBuild">レシオ構築</button>
-    </div>
+    
   </div>
 
   <!-- ② 中段：レシオ設定 -->
@@ -115,29 +111,15 @@ METAL=0</textarea>
     <div id="ratioView" class="small" style="margin-top:8px;"></div>
   </div>
 
-  <!-- ③ 下段：プロトコル一覧 -->
+  <!-- ③ 新：レシオ表＆1枚ランダム -->
   <div class="card">
-    <div class="small">プロトコル一覧（行ごとに1件）</div>
-    <textarea id="pool">DEATH
-FIRE
-GRAVITY
-LIFE
-LIGHT
-METAL
-PLAGUE
-PSYCHIC
-SPEED
-SPIRIT
-DARKNESS
-WATER</textarea>
-    <div class="row">
-      <button id="reset">初期化</button>
-      <button id="shuffle">表示をシャッフル</button>
-      <button id="pick1">1枚ランダム</button>
-      <button id="clear">結果クリア</button>
+    <div class="small">レシオ表（現在のプール/レシオから自動生成）</div>
+    <div id="ratioBuckets" class="small" style="line-height:1.7"></div>
+    <div class="row" style="justify-content:flex-end">
+      <button id="pick1Buckets">この表から1枚ランダム</button>
     </div>
-    <div id="chips"></div>
   </div>
+</div>
 </div>
 
 <script>
@@ -168,8 +150,9 @@ function uniq(lines){
   return arr;
 }
 function getPool(){ return uniq(poolTA.value.split(/\r?\n/)); }
-function setPool(list){ poolTA.value = list.join("\n"); renderChips(); }
-function renderChips(){ const pool=getPool(); chips.innerHTML = pool.map(p=>`<span class="pill">${p}</span>`).join(""); }
+function setPool(list){ poolTA.value = list.join("
+"); renderChips(); renderRatioBuckets(); }
+function renderChips(){ const pool=getPool(); chips.innerHTML = pool.map(p=>`<span class="pill">${p}</span>`).join(""); }</span>`).join(""); }
 function shuffle(a){ const arr=a.slice(); for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
 function sample(a,n){ return shuffle(a).slice(0, Math.min(n,a.length)); }
 function parseRatio(text){
@@ -188,6 +171,9 @@ function costOf(k){ const m=getRatioMap(); return m[k] ?? 1; }
 function showRatioPreview(){
   const pool = getPool(), R = getRatioMap();
   const rows = pool.map(k => `${k}: ${R[k] ?? 1}`);
+  ratioView.textContent = "現在のレシオ → " + rows.join(" / ");
+  renderRatioBuckets();
+}: ${R[k] ?? 1}`);
   ratioView.textContent = "現在のレシオ → " + rows.join(" / ");
 }
 function saveAll(){
@@ -253,13 +239,18 @@ copyBtn.onclick = async ()=>{
 };
 
 /* ---------- 基本操作 ---------- */
-document.getElementById('reset').onclick = ()=>{ let list=dMain.slice(); if(!auxToggle.checked) list=list.concat(auxSet); setPool(list); out.textContent=""; saveAll(); showRatioPreview(); updateShareButtons(); };
-document.getElementById('shuffle').onclick = ()=>{ setPool(shuffle(getPool())); saveAll(); };
-document.getElementById('clear').onclick = ()=>{ out.textContent=""; updateShareButtons(); };
-document.getElementById('pick1').onclick = ()=>{ const p=getPool(); out.textContent = p.length?("🎲 1枚ランダム\n"+sample(p,1)[0]):"リストが空です。"; revealResult(); updateShareButtons(); };
+const resetBtn = document.getElementById('reset');
+if(resetBtn) resetBtn.onclick = ()=>{ let list=dMain.slice(); if(!auxToggle.checked) list=list.concat(auxSet); setPool(list); out.textContent=""; saveAll(); showRatioPreview(); updateShareButtons(); }; if(!auxToggle.checked) list=list.concat(auxSet); setPool(list); out.textContent=""; saveAll(); showRatioPreview(); updateShareButtons(); };
+const shuffleBtn = document.getElementById('shuffle');
+if(shuffleBtn) shuffleBtn.onclick = ()=>{ setPool(shuffle(getPool())); saveAll(); }; saveAll(); };
+const clearBtn = document.getElementById('clear');
+if(clearBtn) clearBtn.onclick = ()=>{ out.textContent=""; updateShareButtons(); }; updateShareButtons(); };
+const pick1Btn = document.getElementById('pick1');
+if(pick1Btn) pick1Btn.onclick = ()=>{ const p=getPool(); out.textContent = p.length?("🎲 1枚ランダム
+"+sample(p,1)[0]):"リストが空です。"; revealResult(); updateShareButtons(); }; out.textContent = p.length?("🎲 1枚ランダム\n"+sample(p,1)[0]):"リストが空です。"; revealResult(); updateShareButtons(); };
 document.getElementById('pick3').onclick = ()=>{ const p=getPool(); const n=+cntIn.value||3; out.textContent = p.length?("🎲 "+n+"枚ランダム（重複なし）\n- "+sample(p,n).join("\n- ")):"リストが空です。"; revealResult(); updateShareButtons(); };
-document.getElementById('saveRatio').onclick = ()=>{ localStorage.setItem(LS.ratio, ratioTA.value); showRatioPreview(); };
-auxToggle.addEventListener('change', ()=>{ let l=getPool(); if(auxToggle.checked){ setPool(l.filter(x=>!auxSet.includes(x))); } else { for(const x of auxSet) if(!l.includes(x)) l.push(x); setPool(l); } saveAll(); showRatioPreview(); });
+document.getElementById('saveRatio').onclick = ()=>{ localStorage.setItem(LS.ratio, ratioTA.value); showRatioPreview(); renderRatioBuckets(); };
+auxToggle.addEventListener('change', ()=>{ let l=getPool(); if(auxToggle.checked){ setPool(l.filter(x=>!auxSet.includes(x))); } else { for(const x of auxSet) if(!l.includes(x)) l.push(x); setPool(l); } saveAll(); showRatioPreview(); renderRatioBuckets(); }); if(auxToggle.checked){ setPool(l.filter(x=>!auxSet.includes(x))); } else { for(const x of auxSet) if(!l.includes(x)) l.push(x); setPool(l); } saveAll(); showRatioPreview(); });
 [poolTA, ratioTA, cntIn, p1MinIn, p1MaxIn, p2MinIn, p2MaxIn, buildSideSel].forEach(el=>el.addEventListener('input', saveAll));
 
 /* 下部固定バー → 既存ボタンをトリガー */
@@ -423,6 +414,30 @@ if(!localStorage.getItem(LS.pool)){
   localStorage.setItem(LS.pool, dMain.concat(auxSet).join("\n"));
 }
 loadAll();
+// 追加：レシオ表の描画と1枚ランダム
+function renderRatioBuckets(){
+  const pool = getPool();
+  const R = getRatioMap();
+  const buckets = new Map();
+  for(const k of pool){
+    const c = R[k] ?? 1;
+    if(!buckets.has(c)) buckets.set(c, []);
+    buckets.get(c).push(k);
+  }
+  const keys = Array.from(buckets.keys()).sort((a,b)=>b-a);
+  const lines = keys.map(v=>`【${v}】` + (buckets.get(v).length? buckets.get(v).join(',') : ''));
+  const el = document.getElementById('ratioBuckets');
+  if(el) el.textContent = lines.join('
+');
+}
+const pick1Buckets = document.getElementById('pick1Buckets');
+if(pick1Buckets) pick1Buckets.onclick = ()=>{
+  const p = getPool();
+  out.textContent = p.length?("🎲 1枚ランダム
+"+sample(p,1)[0]):"リストが空です。";
+  revealResult(); updateShareButtons();
+};
+
 </script>
 
 <footer>
